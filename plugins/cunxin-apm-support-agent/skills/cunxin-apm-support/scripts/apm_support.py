@@ -11,7 +11,7 @@ import sys
 import urllib.error
 import urllib.request
 from collections import Counter, defaultdict
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from pathlib import Path
 from typing import Any, Iterable
 from urllib.parse import urlsplit
@@ -19,6 +19,10 @@ from zoneinfo import ZoneInfo
 
 DEFAULT_BASE_URL = "https://apm.cunxin.com"
 DEFAULT_APP_ID = "23001"
+DEFAULT_PAGE_SIZE = 100
+DEFAULT_MAX_PAGES = 5
+DEFAULT_WINDOW_MINUTES = 60
+DEFAULT_MAX_REQUESTS = 240
 DEFAULT_EVENT_TYPES = [
     "error",
     "user_behav",
@@ -46,8 +50,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--bizline-id", default=None, help="Optional APM business-line ID")
     parser.add_argument("--base-url", default=DEFAULT_BASE_URL, help="APM site origin")
     parser.add_argument("--type", dest="types", action="append", choices=DEFAULT_EVENT_TYPES, help="Event type to query; repeat to select types")
-    parser.add_argument("--page-size", type=int, default=1000, help="Rows per request, 1-10000 (default: 1000)")
-    parser.add_argument("--max-pages", type=int, default=50, help="Safety cap per event type (default: 50)")
+    parser.add_argument("--page-size", type=int, default=DEFAULT_PAGE_SIZE, help="Rows per request, 1-10000 (default: 100)")
+    parser.add_argument("--max-pages", type=int, default=DEFAULT_MAX_PAGES, help="Safety cap per event type and time window (default: 5)")
+    parser.add_argument("--window-minutes", type=int, default=DEFAULT_WINDOW_MINUTES, help="Split the query into this many minutes per request window (default: 60)")
+    parser.add_argument("--max-requests", type=int, default=DEFAULT_MAX_REQUESTS, help="Safety cap for all APM requests in one run (default: 240)")
     parser.add_argument("--save-raw", type=Path, help="Explicitly save raw APM responses to this directory")
     parser.add_argument("--full-day", action="store_true", help="For today, query through 23:59:59 instead of the current Shanghai time")
     return parser.parse_args()
@@ -66,6 +72,10 @@ def validate_args(args: argparse.Namespace) -> None:
         raise SystemExit("--page-size must be between 1 and 10000")
     if args.max_pages < 1:
         raise SystemExit("--max-pages must be at least 1")
+    if not 1 <= args.window_minutes <= 24 * 60:
+        raise SystemExit("--window-minutes must be between 1 and 1440")
+    if args.max_requests < 1:
+        raise SystemExit("--max-requests must be at least 1")
 
 
 def query_bounds(date_value: str, full_day: bool) -> tuple[str, str, bool]:
@@ -101,9 +111,21 @@ def post_json(url: str, payload: dict[str, Any]) -> dict[str, Any]:
         raise RuntimeError(f"APM request failed: {error.reason}") from error
 
 
-def save_response(root: Path, event_type: str, page: int, response: dict[str, Any]) -> None:
+def iter_time_windows(start: str, end: str, window_minutes: int) -> Iterable[tuple[str, str]]:
+    """Yield adjacent inclusive windows so each request has a bounded time range."""
+    cursor = datetime.strptime(start, "%Y-%m-%d %H:%M:%S").replace(tzinfo=SHANGHAI)
+    cutoff = datetime.strptime(end, "%Y-%m-%d %H:%M:%S").replace(tzinfo=SHANGHAI)
+    span = timedelta(minutes=window_minutes)
+    while cursor <= cutoff:
+        window_end = min(cursor + span - timedelta(seconds=1), cutoff)
+        yield cursor.strftime("%Y-%m-%d %H:%M:%S"), window_end.strftime("%Y-%m-%d %H:%M:%S")
+        cursor = window_end + timedelta(seconds=1)
+
+
+def save_response(root: Path, event_type: str, window_start: str, page: int, response: dict[str, Any]) -> None:
     root.mkdir(parents=True, exist_ok=True)
-    output = root / f"{event_type}-page-{page}.json"
+    window_tag = window_start.replace("-", "").replace(" ", "T").replace(":", "")
+    output = root / f"{event_type}-{window_tag}-page-{page}.json"
     output.write_text(json.dumps(response, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
@@ -112,42 +134,56 @@ def query_logs(args: argparse.Namespace) -> tuple[dict[str, list[dict[str, Any]]
     event_types = args.types or DEFAULT_EVENT_TYPES
     all_rows: dict[str, list[dict[str, Any]]] = {}
     warnings: list[str] = []
+    request_count = 0
+    request_limit_reached = False
 
     for event_type in event_types:
         rows: list[dict[str, Any]] = []
-        for page in range(1, args.max_pages + 1):
-            payload: dict[str, Any] = {
-                "page": page,
-                "pageSize": args.page_size,
-                "order": "ASC",
-                "app_id": args.app_id,
-                "item_id": args.user_id,
-                "type": event_type,
-                "log_time_start": start,
-                "log_time_end": end,
-            }
-            if args.bizline_id:
-                payload["bizline_id"] = args.bizline_id
-            response = post_json(f"{args.base_url.rstrip('/')}/api/log/query", payload)
-            if args.save_raw:
-                save_response(args.save_raw, event_type, page, response)
-            if not response.get("success"):
-                warnings.append(f"{event_type}: APM returned success=false")
+        for window_start, window_end in iter_time_windows(start, end, args.window_minutes):
+            if request_limit_reached:
                 break
-            data = response.get("data") or {}
-            page_rows = data.get("result") or []
-            if not isinstance(page_rows, list):
-                warnings.append(f"{event_type}: result is not a list")
-                break
-            rows.extend(row for row in page_rows if isinstance(row, dict))
-            if len(page_rows) < args.page_size:
-                break
-            pagination = data.get("pagination") or {}
-            total = pagination.get("total")
-            if isinstance(total, int) and page * args.page_size >= total:
-                break
-        else:
-            warnings.append(f"{event_type}: stopped at --max-pages={args.max_pages}")
+            for page in range(1, args.max_pages + 1):
+                if request_count >= args.max_requests:
+                    warnings.append(f"已达到 --max-requests={args.max_requests}；剩余时间片未查询，不能据此认定无日志")
+                    request_limit_reached = True
+                    break
+                payload: dict[str, Any] = {
+                    "page": page,
+                    "pageSize": args.page_size,
+                    "order": "ASC",
+                    "app_id": args.app_id,
+                    "item_id": args.user_id,
+                    "type": event_type,
+                    "log_time_start": window_start,
+                    "log_time_end": window_end,
+                }
+                if args.bizline_id:
+                    payload["bizline_id"] = args.bizline_id
+                request_count += 1
+                try:
+                    response = post_json(f"{args.base_url.rstrip('/')}/api/log/query", payload)
+                except RuntimeError as error:
+                    warnings.append(f"{event_type}: `{window_start}` 至 `{window_end}` 查询失败：{error}")
+                    break
+                if args.save_raw:
+                    save_response(args.save_raw, event_type, window_start, page, response)
+                if not response.get("success"):
+                    warnings.append(f"{event_type}: `{window_start}` 至 `{window_end}` APM returned success=false")
+                    break
+                data = response.get("data") or {}
+                page_rows = data.get("result") or []
+                if not isinstance(page_rows, list):
+                    warnings.append(f"{event_type}: `{window_start}` 至 `{window_end}` result is not a list")
+                    break
+                rows.extend(row for row in page_rows if isinstance(row, dict))
+                if len(page_rows) < args.page_size:
+                    break
+                pagination = data.get("pagination") or {}
+                total = pagination.get("total")
+                if isinstance(total, int) and page * args.page_size >= total:
+                    break
+            else:
+                warnings.append(f"{event_type}: `{window_start}` 至 `{window_end}` stopped at --max-pages={args.max_pages}；该时间片数据可能不完整")
         all_rows[event_type] = rows
 
     metadata = {
@@ -158,6 +194,13 @@ def query_logs(args: argparse.Namespace) -> tuple[dict[str, list[dict[str, Any]]
         "end": end,
         "in_progress": in_progress,
         "event_types": event_types,
+        "query_strategy": {
+            "page_size": args.page_size,
+            "max_pages": args.max_pages,
+            "window_minutes": args.window_minutes,
+            "request_count": request_count,
+            "max_requests": args.max_requests,
+        },
     }
     return all_rows, warnings, metadata
 
@@ -296,6 +339,18 @@ def render_report(rows_by_type: dict[str, list[dict[str, Any]]], warnings: list[
         f"- 显式失败/超时行为 `{len(explicit_failures)}` 条；API 非成功 `{len(api_failures)}` 条。",
         f"- 打印主流程启动 `{task['start']}` 次，执行成功 `{task['exec_success']}` 次，完成成功 `{task['finish_success']}` 次。",
     ]
+    strategy = meta.get("query_strategy")
+    if isinstance(strategy, dict):
+        lines.insert(
+            4,
+            (
+                "- 查询策略："
+                f"每个时间片 `{strategy['window_minutes']}` 分钟，"
+                f"每页 `{strategy['page_size']}` 条，"
+                f"每类每片最多 `{strategy['max_pages']}` 页；"
+                f"本次已发起 `{strategy['request_count']}`/`{strategy['max_requests']}` 个只读请求。"
+            ),
+        )
 
     if task["unresolved"]:
         evidence = "、".join(f"`{item['print_id']}`（最后 `{item['last']}`）" for item in task["unresolved"][:10])
