@@ -43,3 +43,4 @@ python3 -m unittest discover -s tests -v
 ```bash
 python3 scripts/apm_support.py query --user-id 1872443 --date 2026-09-14 --save-raw .apm-snapshots/1872443-2026-09-14
 ```
+
