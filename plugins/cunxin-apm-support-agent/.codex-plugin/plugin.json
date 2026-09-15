@@ -1,0 +1,18 @@
+{
+  "name": "cunxin-apm-support-agent",
+  "version": "0.1.0",
+  "description": "Cunxin Apm Support Agent plugin",
+  "author": {
+    "name": "Local developer"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Cunxin Apm Support Agent",
+    "shortDescription": "Use Cunxin Apm Support Agent in Codex.",
+    "longDescription": "Cunxin Apm Support Agent adds a local Codex plugin scaffold.",
+    "developerName": "Local developer",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "Help me use Cunxin Apm Support Agent."
+  }
+}

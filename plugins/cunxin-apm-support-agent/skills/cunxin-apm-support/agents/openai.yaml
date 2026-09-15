@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cunxin APM Support"
+  short_description: "Diagnose Cunxin printer customer complaints from APM telemetry."
+  default_prompt: "Analyze a Cunxin printer customer complaint from APM logs. Ask for the user or print ID and an exact Shanghai date if they are missing."
