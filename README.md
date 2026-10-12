@@ -46,6 +46,9 @@ npx -y zentao-debug --target codex --scope user --mcp-url http://172.30.200.247:
 
 ## 同事安装
 
+面向 ChatGPT 桌面版个人安装和 ChatGPT 工作空间管理员统一部署的完整说明，见 [ChatGPT 安装与使用指南](docs/ChatGPT安装使用指南.md)。
+
+
 1. 将此仓库克隆到受信任的本地目录。
 2. 在 Codex 中添加该仓库的插件市场：
 
@@ -55,7 +58,7 @@ npx -y zentao-debug --target codex --scope user --mcp-url http://172.30.200.247:
 
 3. 在 Codex 的已添加插件市场中安装 `cunxin-apm-support-agent`。之后遇到生产客诉、用户行为、打印 ID 或 APM 分析请求时，`cunxin-apm-support` 技能会自动启用。
 
-请保持仓库为私有仓库：埋点字典和生产 APM 地址均属于公司内部资产。
+本仓库当前为公开仓库。发布前请检查是否包含内部地址、凭据、客户数据或其他不应公开的信息；公开访问者不能直接修改原仓库。
 
 ## 直接验证
 
