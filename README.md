@@ -8,6 +8,7 @@
 - 基于 `trackEvents.fullFlow.js` 关联登录、配置、打印会话、打印任务和退出登录等事件。
 - 识别明确失败、接口状态或耗时异常、未完成打印任务、重试/降级/去重信号，以及高频轮询行为。
 - 默认生成脱敏的中文 Markdown 客诉排查与行为分析报告，不展示原始事件载荷。
+- 本机存在 `cn-saas-printer` 代码时，会以 `origin/dev` 为基线关联页面、接口、队列和打印脚本实现，区分“日志已证实”和“代码上可能发生”的结论。
 
 ## 隐私与生产安全
 
@@ -15,6 +16,21 @@
 - 不会调用 APM 的同步/刷新、账号跳转、项目上传下载、恢复或其他会产生副作用的接口。
 - 除非显式传入 `--save-raw`，否则不会保存原始遥测数据。
 - 报告会主动隐藏 IP、图片 URL/标识、会话 ID、本地路径、User-Agent 和原始 `data_extra`。
+- 不保存、展示或提交 Git 用户名、密码、访问令牌；代码仓库刷新仅使用本机已经配置好的认证。
+
+## 结合本地代码排查
+
+如需同时分析 APM 与客户端实现，请在本机准备以下两个仓库，并保留可读取的 `origin/dev` 引用：
+
+```bash
+git clone http://gitlab.artisanstate.com/front/desktop/cn-saas-printer.git
+cd cn-saas-printer
+git fetch origin dev
+git clone http://gitlab.artisanstate.com/yangxy/scripts.git scripts
+git -C scripts fetch origin dev
+```
+
+智能体不会切换、重置或清理你正在使用的工作分支；它会直接读取 `origin/dev` 的代码进行对照。仓库认证请通过 Git 凭据管理器或 SSH 配置完成，不要把密码写进克隆地址、文档或命令历史。
 
 ## 同事安装
 
