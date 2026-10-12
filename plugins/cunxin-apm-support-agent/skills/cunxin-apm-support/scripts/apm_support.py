@@ -54,6 +54,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-pages", type=int, default=DEFAULT_MAX_PAGES, help="Safety cap per event type and time window (default: 5)")
     parser.add_argument("--window-minutes", type=int, default=DEFAULT_WINDOW_MINUTES, help="Split the query into this many minutes per request window (default: 60)")
     parser.add_argument("--max-requests", type=int, default=DEFAULT_MAX_REQUESTS, help="Safety cap for all APM requests in one run (default: 240)")
+    parser.add_argument("--start-time", help="Optional Shanghai start time on --date, HH:MM or HH:MM:SS; use with --end-time")
+    parser.add_argument("--end-time", help="Optional Shanghai end time on --date, HH:MM or HH:MM:SS; use with --start-time")
     parser.add_argument("--save-raw", type=Path, help="Explicitly save raw APM responses to this directory")
     parser.add_argument("--full-day", action="store_true", help="For today, query through 23:59:59 instead of the current Shanghai time")
     return parser.parse_args()
@@ -76,11 +78,42 @@ def validate_args(args: argparse.Namespace) -> None:
         raise SystemExit("--window-minutes must be between 1 and 1440")
     if args.max_requests < 1:
         raise SystemExit("--max-requests must be at least 1")
+    if bool(args.start_time) != bool(args.end_time):
+        raise SystemExit("--start-time and --end-time must be used together")
+    if args.full_day and (args.start_time or args.end_time):
+        raise SystemExit("--full-day cannot be used with --start-time or --end-time")
+    if args.start_time and args.end_time:
+        start = parse_time_of_day(args.start_time, "--start-time")
+        end = parse_time_of_day(args.end_time, "--end-time")
+        if start > end:
+            raise SystemExit("--start-time must not be after --end-time")
+        if date == datetime.now(SHANGHAI).date():
+            now_time = datetime.now(SHANGHAI).time().replace(microsecond=0)
+            if end > now_time:
+                raise SystemExit("--end-time cannot be in the future for today")
 
 
-def query_bounds(date_value: str, full_day: bool) -> tuple[str, str, bool]:
+def parse_time_of_day(value: str, option_name: str) -> time:
+    for pattern in ("%H:%M:%S", "%H:%M"):
+        try:
+            return datetime.strptime(value, pattern).time()
+        except ValueError:
+            continue
+    raise SystemExit(f"{option_name} must use HH:MM or HH:MM:SS")
+
+
+def query_bounds(
+    date_value: str,
+    full_day: bool,
+    start_time: str | None = None,
+    end_time: str | None = None,
+) -> tuple[str, str, bool]:
     date = datetime.strptime(date_value, "%Y-%m-%d").date()
     now = datetime.now(SHANGHAI)
+    if start_time and end_time:
+        start = datetime.combine(date, parse_time_of_day(start_time, "--start-time"), tzinfo=SHANGHAI)
+        end = datetime.combine(date, parse_time_of_day(end_time, "--end-time"), tzinfo=SHANGHAI)
+        return start.strftime("%Y-%m-%d %H:%M:%S"), end.strftime("%Y-%m-%d %H:%M:%S"), False
     start = datetime.combine(date, time.min, tzinfo=SHANGHAI)
     is_in_progress = date == now.date() and not full_day
     end = now.replace(microsecond=0) if is_in_progress else datetime.combine(date, time.max, tzinfo=SHANGHAI).replace(microsecond=0)
@@ -130,7 +163,12 @@ def save_response(root: Path, event_type: str, window_start: str, page: int, res
 
 
 def query_logs(args: argparse.Namespace) -> tuple[dict[str, list[dict[str, Any]]], list[str], dict[str, Any]]:
-    start, end, in_progress = query_bounds(args.date, args.full_day)
+    start, end, in_progress = query_bounds(
+        args.date,
+        args.full_day,
+        getattr(args, "start_time", None),
+        getattr(args, "end_time", None),
+    )
     event_types = args.types or DEFAULT_EVENT_TYPES
     all_rows: dict[str, list[dict[str, Any]]] = {}
     warnings: list[str] = []

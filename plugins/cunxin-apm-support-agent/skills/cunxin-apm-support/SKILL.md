@@ -43,6 +43,8 @@ python3 scripts/apm_support.py report \
 
 脚本会对 APM 的九类事件做分时间片分页查询，并输出 Markdown 报告。仅当用户需要保留证据快照时才使用 `--save-raw <directory>`；默认不会写入原始遥测数据。
 
+已知客诉操作时间时，使用同一上海日期内的 `--start-time HH:MM --end-time HH:MM` 缩小范围，避免高频轮询事件占满分页配额。
+
 ## 禅道 Bug 链接
 
 - 用户提供禅道 Bug URL 时，必须先加载 `zentao-debug` 技能；在该技能完成 MCP 工具发现前，不得直接调用任何禅道读取工具。

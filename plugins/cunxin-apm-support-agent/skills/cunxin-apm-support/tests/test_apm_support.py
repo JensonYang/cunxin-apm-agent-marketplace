@@ -54,6 +54,12 @@ class ApmSupportTests(unittest.TestCase):
             ],
         )
 
+    def test_query_bounds_can_limit_to_a_specific_time_range(self):
+        self.assertEqual(
+            apm_support.query_bounds("2026-09-14", False, "10:05", "10:14:59"),
+            ("2026-09-14 10:05:00", "2026-09-14 10:14:59", False),
+        )
+
     def test_query_splits_pages_by_small_time_window(self):
         args = argparse.Namespace(
             date="2026-09-14",
