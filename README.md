@@ -9,6 +9,7 @@
 - 识别明确失败、接口状态或耗时异常、未完成打印任务、重试/降级/去重信号，以及高频轮询行为。
 - 默认生成脱敏的中文 Markdown 客诉排查与行为分析报告，不展示原始事件载荷。
 - 本机存在 `cn-saas-printer` 代码时，会以 `origin/dev` 为基线关联页面、接口、队列和打印脚本实现，区分“日志已证实”和“代码上可能发生”的结论。
+- 支持直接提供禅道 Bug 链接：智能体会先通过 `zentao-bug-report` MCP 读取 Bug，再结合 `origin/dev` 代码；Bug 中包含明确用户/打印标识和日期时，才会追加有界 APM 查询。
 
 ## 隐私与生产安全
 
@@ -31,6 +32,17 @@ git -C scripts fetch origin dev
 ```
 
 智能体不会切换、重置或清理你正在使用的工作分支；它会直接读取 `origin/dev` 的代码进行对照。仓库认证请通过 Git 凭据管理器或 SSH 配置完成，不要把密码写进克隆地址、文档或命令历史。
+
+## 禅道 MCP 接入
+
+先按公司网络环境安装并初始化禅道客户端：
+
+```bash
+npm install zentao-debug@2.0.2 --registry=https://nexus.znoinc.com/repository/npm/ --strict-ssl=false
+npx -y zentao-debug --target codex --scope user --mcp-url http://172.30.200.247:8018/mcp --yes
+```
+
+初始化会在 Codex 用户配置中添加 `zentao-bug-report` MCP 服务和对应技能；重启 Codex 后生效。之后直接粘贴禅道 Bug 链接即可。MCP 服务端负责禅道认证，客户端不要配置、保存或提交禅道账号密码。
 
 ## 同事安装
 

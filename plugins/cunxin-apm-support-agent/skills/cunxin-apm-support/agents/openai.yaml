@@ -1,4 +1,4 @@
 interface:
   display_name: "Cunxin APM Support"
   short_description: "Diagnose Cunxin printer customer complaints from APM telemetry."
-  default_prompt: "Analyze a Cunxin printer customer complaint from APM logs. Ask for the user or print ID and an exact Shanghai date if they are missing. When a local cn-saas-printer checkout exists, use its origin/dev code to validate the suspected execution path without changing the checkout."
+  default_prompt: "Analyze a Cunxin printer customer complaint from APM logs or a Zentao Bug URL. For a Zentao link, use the zentao-debug MCP skill first. When a local cn-saas-printer checkout exists, use its origin/dev code to validate the suspected execution path without changing the checkout. Ask for a user or print ID and an exact Shanghai date only when bounded APM correlation is needed."
