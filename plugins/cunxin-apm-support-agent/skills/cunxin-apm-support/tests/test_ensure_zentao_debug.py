@@ -16,6 +16,7 @@ import unittest
 SKILL_DIR = pathlib.Path(__file__).resolve().parents[1]
 ENSURE_SCRIPT = SKILL_DIR / "scripts" / "ensure_zentao_debug.py"
 DEFAULT_MCP_URL = "http://172.30.200.247:8018/mcp"
+NEXUS_NPM_REGISTRY = "https://nexus.znoinc.com/repository/npm/"
 
 
 class EnsureZentaoDebugTests(unittest.TestCase):
@@ -99,6 +100,7 @@ class EnsureZentaoDebugTests(unittest.TestCase):
             [
                 "exec",
                 "--yes",
+                f"--registry={NEXUS_NPM_REGISTRY}",
                 "--package=zentao-debug@2.0.2",
                 "--",
                 "zentao-debug",

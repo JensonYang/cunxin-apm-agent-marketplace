@@ -14,6 +14,7 @@ from typing import Any
 MCP_SERVER_NAME = "zentao-bug-report"
 DEFAULT_PACKAGE = "zentao-debug@2.0.2"
 DEFAULT_MCP_URL = "http://172.30.200.247:8018/mcp"
+NEXUS_NPM_REGISTRY = "https://nexus.znoinc.com/repository/npm/"
 
 
 def run(command: list[str]) -> subprocess.CompletedProcess[str]:
@@ -42,6 +43,7 @@ def install_mcp(npm_binary: str, package: str, mcp_url: str) -> None:
             npm_binary,
             "exec",
             "--yes",
+            f"--registry={NEXUS_NPM_REGISTRY}",
             f"--package={package}",
             "--",
             "zentao-debug",

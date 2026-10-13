@@ -67,7 +67,7 @@ codex plugin marketplace add https://github.com/JensonYang/cunxin-apm-agent-mark
 
 ### 需要通过禅道 Bug 联动分析时
 
-直接发送禅道 Bug 链接即可。智能体会先检查当前用户是否已注册 `zentao-bug-report` MCP；未安装时自动用 `npm exec` 安装并注册 `zentao-debug`，不会修改客户端项目依赖或全局 npm 目录。首次安装需要访问公司 npm 源和禅道 MCP 服务，完成后请重新打开聊天并重新发送同一链接。
+直接发送禅道 Bug 链接即可。智能体会先检查当前用户是否已注册 `zentao-bug-report` MCP；未安装时自动用 `npm exec` 从 `https://nexus.znoinc.com/repository/npm/` 安装并注册 `zentao-debug`，不会从 npmjs 安装，也不会修改客户端项目依赖或全局 npm 目录。首次安装需要访问 Nexus 和禅道 MCP 服务，完成后请重新打开聊天并重新发送同一链接。
 
 MCP 服务端负责禅道认证；不要在聊天、终端命令、仓库地址或文档中填写禅道密码。
 
@@ -130,7 +130,7 @@ MCP 服务端负责禅道认证；不要在聊天、终端命令、仓库地址�
 
 ### 无法分析禅道链接
 
-首次发送链接时，智能体会尝试自动初始化禅道 MCP；初始化完成后必须重新打开聊天并再次发送链接。若自动安装失败，请确认本机可使用 `npm`、能访问公司 npm 源和禅道 MCP 服务，再让智能体重试。若 Bug 未提供用户 ID、打印 ID 或明确日期，插件不会盲目扫描大量历史生产日志；请补充这些信息。
+首次发送链接时，智能体会尝试自动初始化禅道 MCP；初始化完成后必须重新打开聊天并再次发送链接。若自动安装失败，请确认本机可使用 `npm`、能访问 `https://nexus.znoinc.com/repository/npm/` 和禅道 MCP 服务，再让智能体重试。若 Bug 未提供用户 ID、打印 ID 或明确日期，插件不会盲目扫描大量历史生产日志；请补充这些信息。
 
 ### 报告没有关联代码
 
