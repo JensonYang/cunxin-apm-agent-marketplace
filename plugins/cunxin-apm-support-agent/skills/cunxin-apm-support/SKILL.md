@@ -11,7 +11,7 @@ Use the bundled read-only client to turn Cunxin APM telemetry into a concise Chi
 
 When a local `cn-saas-printer` checkout is available, also inspect the application and printing-script implementation on its `origin/dev` baseline. This is required for complaints that involve a specific UI state, request, event, printer behavior, or suspected regression: telemetry establishes what happened; the `dev` code explains the possible execution path. Read `references/code-analysis.md` before doing source-assisted diagnosis.
 
-When the user provides a Zentao Bug URL, first use the installed `zentao-debug` skill to read it through the `zentao-bug-report` MCP server. Then combine the Bug details with local `origin/dev` code and, when the Bug provides a usable user ID/print ID and Shanghai date, bounded APM queries. Read `references/zentao-analysis.md` before this workflow.
+When the user provides a Zentao Bug URL, first run `python3 scripts/ensure_zentao_debug.py --ensure`. The helper checks the current user's Codex MCP configuration and, only when `zentao-bug-report` is absent, uses `npm exec` to install and register `zentao-debug` for that user. Do not add it to the application project's dependencies. If installation adds the MCP for the first time, ask the user to reopen the chat and resend the Bug link; otherwise load the installed `zentao-debug` skill to read the Bug through the `zentao-bug-report` MCP server. Then combine the Bug details with local `origin/dev` code and, when the Bug provides a usable user ID/print ID and Shanghai date, bounded APM queries. Read `references/zentao-analysis.md` before this workflow.
 
 ## Safety and scope
 
@@ -47,7 +47,8 @@ python3 scripts/apm_support.py report \
 
 ## 禅道 Bug 链接
 
-- 用户提供禅道 Bug URL 时，必须先加载 `zentao-debug` 技能；在该技能完成 MCP 工具发现前，不得直接调用任何禅道读取工具。
+- 用户提供禅道 Bug URL 时，必须先执行 `python3 scripts/ensure_zentao_debug.py --ensure`。脚本仅检查当前用户的 `zentao-bug-report` MCP；缺失时自动通过当前用户的 npm 配置安装并注册 `zentao-debug`，不会修改当前项目的 `package.json`、锁文件或全局依赖。
+- 首次安装成功后，MCP 需要在新聊天中加载：告知用户重新打开聊天并重新发送链接，在此之前不得直接调用任何禅道读取工具，也不得根据 URL 猜测 Bug 内容。检测到已注册时，继续加载 `zentao-debug` 技能。
 - 用 MCP 运行时的 `tools/list` 结果确定实际读取工具名。MCP 不可用、无权限或 Bug 不存在时，说明限制并停止 Bug 内容推断，不要根据 URL 猜测问题内容。
 - 若 Bug 中没有可用的用户/打印标识和上海日期，先完成“禅道 + dev 代码”分析；只有在补齐标识和日期后才查询 APM。
 

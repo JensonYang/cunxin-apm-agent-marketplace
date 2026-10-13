@@ -9,7 +9,7 @@
 - 识别明确失败、接口状态或耗时异常、未完成打印任务、重试/降级/去重信号，以及高频轮询行为。
 - 默认生成脱敏的中文 Markdown 客诉排查与行为分析报告，不展示原始事件载荷。
 - 本机存在 `cn-saas-printer` 代码时，会以 `origin/dev` 为基线关联页面、接口、队列和打印脚本实现，区分“日志已证实”和“代码上可能发生”的结论。
-- 支持直接提供禅道 Bug 链接：智能体会先通过 `zentao-bug-report` MCP 读取 Bug，再结合 `origin/dev` 代码；Bug 中包含明确用户/打印标识和日期时，才会追加有界 APM 查询。
+- 支持直接提供禅道 Bug 链接：智能体会先检查 `zentao-debug`；未安装时自动为当前用户安装并注册 `zentao-bug-report` MCP，再结合 `origin/dev` 代码分析。Bug 中包含明确用户/打印标识和日期时，才会追加有界 APM 查询。
 
 ## 隐私与生产安全
 
@@ -35,14 +35,15 @@ git -C scripts fetch origin dev
 
 ## 禅道 MCP 接入
 
-先按公司网络环境安装并初始化禅道客户端：
+首次发送禅道 Bug 链接时，智能体会自动检查当前用户的 Codex MCP 配置。未检测到 `zentao-bug-report` 时，会用 `npm exec` 安装 `zentao-debug@2.0.2` 并注册该 MCP；不会改动 `cn-saas-printer` 的 `package.json`、锁文件或全局 npm 目录。安装需要访问团队配置的 npm 源和禅道 MCP 服务，首次完成后重新打开聊天并再次发送 Bug 链接即可。
+
+如需在终端手动诊断或重试，请在插件技能目录执行：
 
 ```bash
-npm install zentao-debug@2.0.2 --registry=https://nexus.znoinc.com/repository/npm/ --strict-ssl=false
-npx -y zentao-debug --target codex --scope user --mcp-url http://172.30.200.247:8018/mcp --yes
+python3 scripts/ensure_zentao_debug.py --ensure
 ```
 
-初始化会在 Codex 用户配置中添加 `zentao-bug-report` MCP 服务和对应技能；重启 Codex 后生效。之后直接粘贴禅道 Bug 链接即可。MCP 服务端负责禅道认证，客户端不要配置、保存或提交禅道账号密码。
+MCP 服务端负责禅道认证，客户端不要配置、保存或提交禅道账号密码。
 
 ## 同事安装
 
@@ -66,6 +67,7 @@ npx -y zentao-debug --target codex --scope user --mcp-url http://172.30.200.247:
 
 ```bash
 python3 scripts/apm_support.py report --user-id 1872443 --date 2026-09-14 --app-id 23001
+python3 scripts/ensure_zentao_debug.py --check
 python3 -m unittest discover -s tests -v
 ```
 
