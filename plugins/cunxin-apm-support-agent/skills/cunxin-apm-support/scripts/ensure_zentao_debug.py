@@ -44,6 +44,7 @@ def install_mcp(npm_binary: str, package: str, mcp_url: str) -> None:
             "exec",
             "--yes",
             f"--registry={NEXUS_NPM_REGISTRY}",
+            "--strict-ssl=false",
             f"--package={package}",
             "--",
             "zentao-debug",

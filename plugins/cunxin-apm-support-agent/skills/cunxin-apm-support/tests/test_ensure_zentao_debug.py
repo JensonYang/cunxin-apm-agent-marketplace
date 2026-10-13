@@ -101,6 +101,7 @@ class EnsureZentaoDebugTests(unittest.TestCase):
                 "exec",
                 "--yes",
                 f"--registry={NEXUS_NPM_REGISTRY}",
+                "--strict-ssl=false",
                 "--package=zentao-debug@2.0.2",
                 "--",
                 "zentao-debug",

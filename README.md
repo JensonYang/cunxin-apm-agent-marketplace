@@ -35,7 +35,7 @@ git -C scripts fetch origin dev
 
 ## 禅道 MCP 接入
 
-首次发送禅道 Bug 链接时，智能体会自动检查当前用户的 Codex MCP 配置。未检测到 `zentao-bug-report` 时，会用 `npm exec` 从 `https://nexus.znoinc.com/repository/npm/` 安装 `zentao-debug@2.0.2` 并注册该 MCP；不会访问 npmjs，也不会改动 `cn-saas-printer` 的 `package.json`、锁文件或全局 npm 目录。安装需要访问 Nexus 和禅道 MCP 服务，首次完成后重新打开聊天并再次发送 Bug 链接即可。
+首次发送禅道 Bug 链接时，智能体会自动检查当前用户的 Codex MCP 配置。未检测到 `zentao-bug-report` 时，会用 `npm exec` 从 `https://nexus.znoinc.com/repository/npm/` 携带 `--strict-ssl=false` 安装 `zentao-debug@2.0.2` 并注册该 MCP；不会访问 npmjs，也不会改动 `cn-saas-printer` 的 `package.json`、锁文件或全局 npm 目录。安装需要访问 Nexus 和禅道 MCP 服务，首次完成后重新打开聊天并再次发送 Bug 链接即可。
 
 如需在终端手动诊断或重试，请在插件技能目录执行：
 
